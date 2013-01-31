@@ -18,8 +18,8 @@ public class SitesRestApiTest extends AbstractRestApiTest {
 
     @Test
     public void anonymous_sites() {
-        String response = given().anonymous().expect().statusCode(200).get("/sites").asString();
-        JsonPath json = new JsonPath(response);
+        JsonPath json = given().anonymous().expect().statusCode(SC_OK)
+            .get("/sites").jsonPath();
 
         List<String> knownSites = new ArrayList<String>(Arrays.asList("classic", "mobile"));
         List<Map<String, String>> sites = json.getList("");
@@ -34,8 +34,8 @@ public class SitesRestApiTest extends AbstractRestApiTest {
 
     @Test
     public void anonymous_spaces() {
-        String response = given().anonymous().expect().statusCode(200).get("/spaces").asString();
-        JsonPath json = new JsonPath(response);
+        JsonPath json = given().anonymous().expect().statusCode(SC_OK)
+            .get("/spaces").jsonPath();
 
         List<String> knownSites = new ArrayList<String>(Arrays.asList("/platform/guests"));
         List<Map<String, String>> sites = json.getList("");
@@ -49,13 +49,13 @@ public class SitesRestApiTest extends AbstractRestApiTest {
     }
 
     @Test
-    public void root_sites() {
-        String response = given().user("root").expect().statusCode(200).get("/sites").asString();
-        JsonPath json = new JsonPath(response);
+    public void sites() {
+        JsonPath json = given().user("root").expect().statusCode(SC_OK)
+            .get("/sites").jsonPath();
 
         List<String> knownSites = new ArrayList<String>(Arrays.asList("classic", "mobile"));
         List<Map<String, String>> sites = json.getList("");
-        assertEquals(knownSites.size(), sites.size());
+        assertTrue(knownSites.size() <= sites.size());
         for (Map<String, String> site : sites) {
             assertEquals("site", site.get("type"));
             assertTrue(knownSites.contains(site.get("name")));
@@ -65,13 +65,13 @@ public class SitesRestApiTest extends AbstractRestApiTest {
     }
 
     @Test
-    public void root_spaces() {
-        String response = given().user("root").expect().statusCode(200).get("/spaces").asString();
-        JsonPath json = new JsonPath(response);
+    public void spaces() {
+        JsonPath json = given().user("root").expect().statusCode(SC_OK)
+            .get("/spaces").jsonPath();
 
         List<String> knownSites = new ArrayList<String>(Arrays.asList("/platform/guests", "/organization/management/executive-board", "/platform/administrators", "/platform/users"));
         List<Map<String, String>> sites = json.getList("");
-        assertEquals(knownSites.size(), sites.size());
+        assertTrue(knownSites.size() <= sites.size());
         for (Map<String, String> site : sites) {
             assertEquals("space", site.get("type"));
             assertTrue(knownSites.contains(site.get("name")));
@@ -81,4 +81,179 @@ public class SitesRestApiTest extends AbstractRestApiTest {
     }
 
     //TODO: Find way to test dashboards, they aren't created until the user logs into the portal
+
+    @Test
+    public void anonymous_spaces_notauthorized() {
+        given().anonymous().expect().statusCode(SC_UNAUTHORIZED)
+            .get("/spaces/platform/administrators");
+    }
+
+    @Test
+    public void site_update() throws Exception {
+        // Get current displayName & description so we can set it back if tests succeed
+        JsonPath json = given().anonymous().expect().statusCode(SC_OK)
+            .get("sites/classic").jsonPath();
+
+        String displayName = json.getString("displayName");
+        String description = json.getString("description");
+
+        // Update site classic
+        json = given().user("root")
+            .body("{\"displayName\":\"Test\", \"description\":\"REST API - Test\"}")
+            .expect().statusCode(SC_OK)
+            .put("/sites/classic").jsonPath();
+
+        assertEquals("Test", json.getString("displayName"));
+        assertEquals("REST API - Test", json.getString("description"));
+
+        // admin/root get
+        Thread.sleep(300);
+        json = given().user("root").expect().statusCode(SC_OK)
+            .get("sites/classic").jsonPath();
+
+        // Verify data
+        assertEquals("Test", json.getString("displayName"));
+        assertEquals("REST API - Test", json.getString("description"));
+
+        // Anonymous get
+        json = given().anonymous().expect().statusCode(SC_OK)
+            .get("sites/classic").jsonPath();
+
+        // Verify data
+        assertEquals("Test", json.getString("displayName"));
+        assertEquals("REST API - Test", json.getString("description"));
+
+        // Update site classic back to original displayName and description
+        json = given().user("root")
+            .body("{\"displayName\":\"" + displayName + "\", \"description\":\"" + description + "\"}")
+            .expect().statusCode(SC_OK)
+            .expect().statusCode(SC_OK)
+            .put("/sites/classic").jsonPath();
+
+        // Verify data is set back
+        assertEquals(displayName, json.getString("displayName"));
+        assertEquals(description, json.getString("description"));
+    }
+
+    @Test
+    public void site_update_not_found() {
+        given().user("root")
+            .body("{\"displayName\":\"Test\"}")
+            .expect().statusCode(SC_NOT_FOUND)
+            .put("/sites/abcdefg");
+    }
+
+    @Test
+    public void anonymous_site_update() throws Exception {
+        given().anonymous().expect().statusCode(SC_UNAUTHORIZED).put("/sites/classic");
+    }
+
+    @Test
+    public void site_delete() throws Exception {
+        // Create site
+        given().user("root").expect().statusCode(SC_OK)
+            .post("/sites/newsite");
+
+        Thread.sleep(300);
+
+        // Finally delete the site
+        given().user("root").expect().statusCode(SC_OK)
+            .delete("/sites/newsite");
+
+        Thread.sleep(300);
+
+        // Delete again and should get 404
+        given().user("root").expect().statusCode(SC_NOT_FOUND)
+            .delete("/sites/newsite");
+    }
+
+    @Test
+    public void site_delete_not_found() {
+        given().user("root").expect().statusCode(SC_NOT_FOUND)
+            .delete("/sites/abcdefg");
+    }
+
+    @Test
+    public void anonymous_site_delete() throws Exception {
+        given().anonymous().expect().statusCode(SC_UNAUTHORIZED)
+            .delete("/sites/classic");
+    }
+
+    @Test
+    public void site_create() throws Exception {
+        // Create site
+        given().user("root").expect().statusCode(SC_OK)
+            .post("/sites/newsite");
+
+        Thread.sleep(300);
+
+        // Make sure it exists
+        given().user("root").expect().statusCode(SC_OK)
+            .get("sites/newsite");
+
+        // Ensure anonymous access since it's available to Everyone
+        given().anonymous().expect().statusCode(SC_OK)
+            .get("/sites/newsite");
+
+        // Make sure we get bad request if we try and create it again
+        given().user("root").expect().statusCode(SC_CONFLICT)
+            .post("/sites/newsite");
+
+        // Finally delete the site
+        given().user("root").expect().statusCode(SC_OK)
+            .delete("/sites/newsite");
+    }
+
+    @Test
+    public void site_create_existing() {
+        given().user("root").expect().statusCode(SC_CONFLICT)
+            .post("/sites/classic");
+    }
+
+    @Test
+    public void anonymous_site_create() throws Exception {
+        given().anonymous().expect().statusCode(SC_UNAUTHORIZED)
+            .post("/sites/classic");
+    }
+
+    @Test
+    public void site_update_unauthorized() throws Exception {
+        // Create site
+        given().user("root").expect().statusCode(SC_OK)
+            .post("/sites/newsite");
+
+        Thread.sleep(300);
+
+        // Update permissions
+        given().user("root")
+            .body("{\"access-permissions\": [\"/platform/administrators\"]}")
+            .expect().statusCode(SC_OK)
+            .put("/sites/newsite");
+
+        Thread.sleep(300);
+
+        // Ensure anonymous no longer has access
+        given().anonymous().expect().statusCode(SC_UNAUTHORIZED)
+            .get("/sites/newsite");
+
+        // Ensure root still has access
+        given().user("root").expect().statusCode(SC_OK)
+            .get("/sites/newsite");
+
+        // Finally delete the site
+        given().user("root").expect().statusCode(SC_OK)
+            .delete("/sites/newsite");
+    }
+
+    @Test
+    public void site_not_found() {
+        given().user("root").expect().statusCode(SC_NOT_FOUND)
+            .get("/sites/does-not-exist");
+    }
+
+    @Test
+    public void site_bad_request_invalid_type() throws Exception {
+        given().user("root").body("{\"displayName\":[{\"foo\":\"bar\"}]}").expect().statusCode(SC_BAD_REQUEST)
+            .put("/sites/classic");
+    }
 }

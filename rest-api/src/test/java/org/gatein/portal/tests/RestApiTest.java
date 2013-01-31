@@ -1,6 +1,7 @@
 package org.gatein.portal.tests;
 
 import com.jayway.restassured.path.json.JsonPath;
+import org.apache.http.HttpStatus;
 import org.junit.Test;
 
 import java.util.List;
@@ -19,25 +20,24 @@ public class RestApiTest extends AbstractRestApiTest {
 
     @Test
     public void anonymous() {
-        String response = given().anonymous()
-            .expect().statusCode(200)
-            .when().get("/")
-            .asString();
+        JsonPath json = given().anonymous().expect().statusCode(SC_OK).when()
+            .get("/").jsonPath();
 
-        JsonPath json = new JsonPath(response);
         assertChild(json, "sites");
         assertChild(json, "spaces");
         assertChild(json, "dashboards");
     }
 
     @Test
-    public void root() {
-        String response = given().user("root")
-            .expect().statusCode(200)
-            .when().get("/")
-            .asString();
+    public void anonymous_unauthorized() {
+        given().anonymous().expect().statusCode(SC_UNAUTHORIZED);
+    }
 
-        JsonPath json = new JsonPath(response);
+    @Test
+    public void root() {
+        JsonPath json = given().user("root").expect().statusCode(SC_OK).when()
+            .get("/").jsonPath();
+
         assertChild(json, "sites");
         assertChild(json, "spaces");
         assertChild(json, "dashboards");

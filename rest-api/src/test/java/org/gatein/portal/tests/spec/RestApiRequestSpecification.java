@@ -28,6 +28,6 @@ public class RestApiRequestSpecification {
     }
 
     private RequestSpecification build(RequestSpecification spec) {
-        return spec.header("Accept", contentType);
+        return spec.header("Accept", contentType).header("Content-Type", contentType);
     }
 }

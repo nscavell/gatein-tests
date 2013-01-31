@@ -1,6 +1,7 @@
 package org.gatein.portal.tests;
 
 import com.jayway.restassured.path.json.JsonPath;
+import org.apache.http.HttpStatus;
 import org.gatein.portal.tests.spec.RestApiRequestSpecification;
 
 import java.util.List;
@@ -11,7 +12,7 @@ import static org.junit.Assert.*;
 /**
  * @author <a href="mailto:nscavell@redhat.com">Nick Scavelli</a>
  */
-public abstract class AbstractRestApiTest {
+public abstract class AbstractRestApiTest implements HttpStatus {
 
     public static RestApiRequestSpecification given() {
         return new RestApiRequestSpecification();

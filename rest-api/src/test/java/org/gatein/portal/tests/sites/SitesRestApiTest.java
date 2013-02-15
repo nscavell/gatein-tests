@@ -21,13 +21,9 @@ public class SitesRestApiTest extends AbstractRestApiTest {
         JsonPath json = given().anonymous().expect().statusCode(SC_OK)
             .get("/sites").jsonPath();
 
-        List<String> knownSites = new ArrayList<String>(Arrays.asList("classic", "mobile"));
         List<Map<String, String>> sites = json.getList("");
-        assertEquals(knownSites.size(), sites.size());
         for (Map<String, String> site : sites) {
             assertEquals("site", site.get("type"));
-            assertTrue(knownSites.contains(site.get("name")));
-            knownSites.remove(site.get("name"));
             assertNotNull(site.get("url"));
         }
     }
@@ -37,13 +33,9 @@ public class SitesRestApiTest extends AbstractRestApiTest {
         JsonPath json = given().anonymous().expect().statusCode(SC_OK)
             .get("/spaces").jsonPath();
 
-        List<String> knownSites = new ArrayList<String>(Arrays.asList("/platform/guests"));
         List<Map<String, String>> sites = json.getList("");
-        assertEquals(knownSites.size(), sites.size());
         for (Map<String, String> site : sites) {
             assertEquals("space", site.get("type"));
-            assertTrue(knownSites.contains(site.get("name")));
-            knownSites.remove(site.get("name"));
             assertNotNull(site.get("url"));
         }
     }
@@ -53,13 +45,9 @@ public class SitesRestApiTest extends AbstractRestApiTest {
         JsonPath json = given().user("root").expect().statusCode(SC_OK)
             .get("/sites").jsonPath();
 
-        List<String> knownSites = new ArrayList<String>(Arrays.asList("classic", "mobile"));
         List<Map<String, String>> sites = json.getList("");
-        assertTrue(knownSites.size() <= sites.size());
         for (Map<String, String> site : sites) {
             assertEquals("site", site.get("type"));
-            assertTrue(knownSites.contains(site.get("name")));
-            knownSites.remove(site.get("name"));
             assertNotNull(site.get("url"));
         }
     }
@@ -69,13 +57,9 @@ public class SitesRestApiTest extends AbstractRestApiTest {
         JsonPath json = given().user("root").expect().statusCode(SC_OK)
             .get("/spaces").jsonPath();
 
-        List<String> knownSites = new ArrayList<String>(Arrays.asList("/platform/guests", "/organization/management/executive-board", "/platform/administrators", "/platform/users"));
         List<Map<String, String>> sites = json.getList("");
-        assertTrue(knownSites.size() <= sites.size());
         for (Map<String, String> site : sites) {
             assertEquals("space", site.get("type"));
-            assertTrue(knownSites.contains(site.get("name")));
-            knownSites.remove(site.get("name"));
             assertNotNull(site.get("url"));
         }
     }
@@ -106,7 +90,7 @@ public class SitesRestApiTest extends AbstractRestApiTest {
         assertEquals("Test", json.getString("displayName"));
         assertEquals("REST API - Test", json.getString("description"));
 
-        // admin/root get
+        // root get
         Thread.sleep(300);
         json = given().user("root").expect().statusCode(SC_OK)
             .get("sites/classic").jsonPath();
@@ -195,7 +179,7 @@ public class SitesRestApiTest extends AbstractRestApiTest {
         given().anonymous().expect().statusCode(SC_OK)
             .get("/sites/newsite");
 
-        // Make sure we get bad request if we try and create it again
+        // Make sure we get conflict if we try and create it again
         given().user("root").expect().statusCode(SC_CONFLICT)
             .post("/sites/newsite");
 
@@ -249,6 +233,9 @@ public class SitesRestApiTest extends AbstractRestApiTest {
     public void site_not_found() {
         given().user("root").expect().statusCode(SC_NOT_FOUND)
             .get("/sites/does-not-exist");
+
+        given().anonymous().expect().statusCode(SC_NOT_FOUND)
+                .get("/sites/does-not-exist");
     }
 
     @Test

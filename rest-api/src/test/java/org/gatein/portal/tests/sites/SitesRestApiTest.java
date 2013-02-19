@@ -136,19 +136,19 @@ public class SitesRestApiTest extends AbstractRestApiTest {
     public void site_delete() throws Exception {
         // Create site
         given().user("root").expect().statusCode(SC_OK)
-            .post("/sites/newsite");
+            .post("/sites/delete");
 
         Thread.sleep(300);
 
         // Finally delete the site
         given().user("root").expect().statusCode(SC_OK)
-            .delete("/sites/newsite");
+            .delete("/sites/delete");
 
         Thread.sleep(300);
 
         // Delete again and should get 404
         given().user("root").expect().statusCode(SC_NOT_FOUND)
-            .delete("/sites/newsite");
+            .delete("/sites/delete");
     }
 
     @Test
@@ -167,25 +167,25 @@ public class SitesRestApiTest extends AbstractRestApiTest {
     public void site_create() throws Exception {
         // Create site
         given().user("root").expect().statusCode(SC_OK)
-            .post("/sites/newsite");
+            .post("/sites/create");
 
         Thread.sleep(300);
 
         // Make sure it exists
         given().user("root").expect().statusCode(SC_OK)
-            .get("sites/newsite");
+            .get("sites/create");
 
         // Ensure anonymous access since it's available to Everyone
         given().anonymous().expect().statusCode(SC_OK)
-            .get("/sites/newsite");
+            .get("/sites/create");
 
         // Make sure we get conflict if we try and create it again
         given().user("root").expect().statusCode(SC_CONFLICT)
-            .post("/sites/newsite");
+            .post("/sites/create");
 
         // Finally delete the site
         given().user("root").expect().statusCode(SC_OK)
-            .delete("/sites/newsite");
+            .delete("/sites/create");
     }
 
     @Test
@@ -204,7 +204,7 @@ public class SitesRestApiTest extends AbstractRestApiTest {
     public void site_update_unauthorized() throws Exception {
         // Create site
         given().user("root").expect().statusCode(SC_OK)
-            .post("/sites/newsite");
+            .post("/sites/update");
 
         Thread.sleep(300);
 
@@ -212,21 +212,21 @@ public class SitesRestApiTest extends AbstractRestApiTest {
         given().user("root")
             .body("{\"access-permissions\": [\"/platform/administrators\"]}")
             .expect().statusCode(SC_OK)
-            .put("/sites/newsite");
+            .put("/sites/update");
 
         Thread.sleep(300);
 
         // Ensure anonymous no longer has access
         given().anonymous().expect().statusCode(SC_UNAUTHORIZED)
-            .get("/sites/newsite");
+            .get("/sites/update");
 
         // Ensure root still has access
         given().user("root").expect().statusCode(SC_OK)
-            .get("/sites/newsite");
+            .get("/sites/update");
 
         // Finally delete the site
         given().user("root").expect().statusCode(SC_OK)
-            .delete("/sites/newsite");
+            .delete("/sites/update");
     }
 
     @Test

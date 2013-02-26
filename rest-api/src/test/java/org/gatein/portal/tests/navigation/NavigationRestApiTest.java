@@ -4,8 +4,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.jayway.restassured.path.json.JsonPath;
-import groovy.json.JsonBuilder;
 import org.gatein.portal.tests.AbstractRestApiTest;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -190,15 +191,116 @@ public class NavigationRestApiTest extends AbstractRestApiTest {
     }
 
     @Test
-    public void node_update() {
-        JsonPath json = given().user("root").expect().statusCode(SC_OK)
+    public void node_update() throws Exception {
+        String jsonString = given().user("root").expect().statusCode(SC_OK)
+                .get("/sites/classic/navigation/home").asString();
+
+        String original = null;
+        JSONObject json = new JSONObject(jsonString);
+        JSONArray displayNames = json.getJSONArray("displayNames");
+        for (int i = 0; i < displayNames.length(); i++) {
+            JSONObject displayName = displayNames.getJSONObject(i);
+            if ("en".equals(displayName.getString("lang"))) {
+                original = displayName.getString("value");
+                displayName.put("value", "Home (REST Test)");
+            }
+        }
+
+        // Update it
+        JsonPath jsonPath = given().user("root").body(json.toString()).expect().statusCode(SC_OK)
+                .put("/sites/classic/navigation/home").jsonPath();
+        List<Map<String, String>> displayName = jsonPath.get("displayNames.findAll { dn -> dn.lang == 'en' }");
+        assertEquals("Home (REST Test)", displayName.get(0).get("value"));
+
+        Thread.sleep(300);
+
+        // Ensure it was indeed updated
+        jsonPath = given().user("root").expect().statusCode(SC_OK)
                 .get("/sites/classic/navigation/home").jsonPath();
+        displayName = jsonPath.get("displayNames.findAll { dn -> dn.lang == 'en' }");
+        assertEquals("Home (REST Test)", displayName.get(0).get("value"));
 
-        JsonBuilder jb = new JsonBuilder();
-        jb.call(json.getList("displayNames"));
-        String displayNames = "{\n   \"displayNames\":" + jb.toPrettyString() + "\n}";
-
-        given().user("root").body(displayNames).expect().statusCode(SC_OK)
+        // Now set it back to original
+        given().user("root").body(jsonString).expect().statusCode(SC_OK)
                 .put("/sites/classic/navigation/home");
+
+        Thread.sleep(300);
+
+        // Ensure it's back to original
+        jsonPath = given().user("root").expect().statusCode(SC_OK)
+                .get("/sites/classic/navigation/home").jsonPath();
+        displayName = jsonPath.get("displayNames.findAll { dn -> dn.lang == 'en' }");
+        assertEquals(original, displayName.get(0).get("value"));
+    }
+
+    @Test
+    public void node_update_bad_data() throws Exception {
+        String jsonString = given().user("root").expect().statusCode(SC_OK)
+                .get("/sites/classic/navigation/home").asString();
+
+        JSONObject json = new JSONObject(jsonString);
+        json.remove("displayNames");
+        json.put("displayName", JSONObject.NULL);
+
+        given().user("root").body(json.toString()).expect().statusCode(SC_BAD_REQUEST)
+                .put("/sites/classic/navigation/home");
+    }
+
+    @Test
+    public void anonymous_node_update() throws Exception {
+        String jsonString = given().anonymous().expect().statusCode(SC_OK)
+                .get("/sites/classic/navigation/home").asString();
+
+        // Anonymous cannot update
+        given().anonymous().body(jsonString).expect().statusCode(SC_UNAUTHORIZED)
+                .put("/sites/classic/navigation/home");
+    }
+
+    @Test
+    public void user_node_update() throws Exception {
+        String jsonString = given().user("mary").expect().statusCode(SC_OK)
+                .get("/sites/classic/navigation/home").asString();
+
+        // User mary cannot update
+        given().user("mary").body(jsonString).expect().statusCode(SC_UNAUTHORIZED)
+                .put("/sites/classic/navigation/home");
+    }
+
+    @Test
+    public void node_create_delete() throws Exception {
+        // Ensure it doesn't exist
+        given().user("root").expect().statusCode(SC_NOT_FOUND)
+                .get("/sites/classic/navigation/home/home-1");
+
+        // Create it
+        given().user("root").expect().statusCode(SC_OK)
+                .post("/sites/classic/navigation/home/home-1");
+        Thread.sleep(300);
+
+        // Retrieve it
+        given().user("root").expect().statusCode(SC_OK)
+                .get("/sites/classic/navigation/home/home-1");
+
+        // Delete it
+        given().user("root").expect().statusCode(SC_OK)
+                .delete("/sites/classic/navigation/home/home-1");
+    }
+
+    @Test
+    public void node_create_exists() throws Exception {
+        given().user("root").expect().statusCode(SC_CONFLICT)
+                .post("/sites/classic/navigation/home");
+    }
+
+    @Test
+    public void anonymous_node_create() throws Exception {
+        given().anonymous().expect().statusCode(SC_UNAUTHORIZED)
+                .post("/sites/classic/navigation/home/home-1");
+    }
+
+    @Test
+    public void anonymous_node_delete() throws Exception {
+        given().anonymous().expect().statusCode(SC_UNAUTHORIZED)
+                .delete("/sites/classic/navigation/home");
     }
 }

@@ -138,6 +138,26 @@ public class NavigationRestApiTest extends AbstractRestApiTest {
     }
 
     @Test
+    public void update_navigation() throws Exception {
+        JsonPath json = given().user("root").expect().statusCode(SC_OK)
+                .get("/sites/classic/navigation").jsonPath();
+
+        int priority = json.getInt("priority");
+
+        given().user("root").body("{ \"priority\" : 123 }").expect().statusCode(SC_OK)
+                .put("/sites/classic/navigation");
+
+        Thread.sleep(500);
+
+        json = given().user("root").expect().statusCode(SC_OK)
+                .get("/sites/classic/navigation").jsonPath();
+        assertEquals(123, json.getInt("priority"));
+
+        given().user("root").body("{ \"priority\" : " + priority + " }").expect().statusCode(SC_OK)
+                .put("/sites/classic/navigation");
+    }
+
+    @Test
     public void node() {
         JsonPath json = given().user("root").expect().statusCode(SC_OK)
                 .get("/sites/classic/navigation/home").jsonPath();

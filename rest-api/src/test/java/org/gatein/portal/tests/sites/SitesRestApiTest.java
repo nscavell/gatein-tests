@@ -114,6 +114,8 @@ public class SitesRestApiTest extends AbstractRestApiTest {
             .expect().statusCode(SC_OK)
             .put("/sites/classic").jsonPath();
 
+        Thread.sleep(500);
+
         // Verify data is set back
         assertEquals(displayName, json.getString("displayName"));
         assertEquals(description, json.getString("description"));
@@ -186,6 +188,8 @@ public class SitesRestApiTest extends AbstractRestApiTest {
         // Finally delete the site
         given().user("root").expect().statusCode(SC_OK)
             .delete("/sites/create");
+
+        Thread.sleep(500);
     }
 
     @Test
